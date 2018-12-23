@@ -23,6 +23,9 @@ func TestNextTokenExtension(t *testing.T) {
 	} else {
 		return false;
 	}
+
+	10 == 10;
+	10 != 9;
 	`
 
 	test := []struct {
@@ -119,6 +122,18 @@ func TestNextTokenExtension(t *testing.T) {
 
 		// }
 		{token.RBRACE, "}"},
+
+		// 10 == 10;
+		{token.INT, "10"},
+		{token.EQ, "=="},
+		{token.INT, "10"},
+		{token.SEMICOLON, ";"},
+
+		// 10 != 9;
+		{token.INT, "10"},
+		{token.NOT_EQ, "!="},
+		{token.INT, "9"},
+		{token.SEMICOLON, ";"},
 
 		{token.EOF, ""},
 	}
