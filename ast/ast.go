@@ -125,6 +125,47 @@ func (p *Program) TokenLiteral() string {
 	}
 }
 
+type IfExpression struct {
+	Token       token.Token // 'if' トークン
+	Condition   Expression
+	Consequence *BlookStatement
+	Alternative *BlockStatement
+}
+
+func (ie *IfExpression) expressionNode()      {}
+func (ie *IfExpression) TokenLiteral() string { return b.Token.Literal }
+func (ie *IfExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString("if")
+	out.WriteString(ie.Condition.String())
+	out.WriteString(" ")
+	out.WriteString(ie.Consequence.String())
+
+	if ie.Alternative != nil {
+		out.WriteString("else ")
+		out.WriteString(ie.Alternative.String())
+	}
+	return out.String()
+}
+
+type BlockStatement struct {
+	Token      token.Token // { トークン
+	Statements []Statement
+}
+
+func (bs *BlockStatement) expressionNode()      {}
+func (bs *BlockStatement) TokenLiteral() string { return b.Token.Literal }
+func (bs *BlockStatement) String() string {
+	var out bytes.Buffer
+
+	for _, s := range bs.Statements {
+		out.WriteString(s)
+	}
+
+	return out.String()
+}
+
 func (p *Program) String() string {
 	var out bytes.Buffer
 
