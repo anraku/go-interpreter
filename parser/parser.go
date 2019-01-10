@@ -17,6 +17,7 @@ type Parser struct {
 	curToken  token.Token
 	peekToken token.Token
 
+	// トークンタイプ毎のASTを構築する関数のマップ
 	prefixParseFns map[token.TokenType]prefixParseFn
 	infixParseFns  map[token.TokenType]infixParseFn
 }
@@ -27,6 +28,7 @@ func New(l *lexer.Lexer) *Parser {
 		errors: []string{},
 	}
 
+	// ASTを構築する関数をマップに登録
 	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
@@ -79,6 +81,7 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	// if文の中のブロック文を構築する
 	expression.Consequence = p.parseBlockStatement()
 
+	// elseが存在していればAlternativeに対応するブロック文を構築
 	if p.peekTokenIs(token.ELSE) {
 		p.nextToken()
 		if !p.expectPeek(token.LBRACE) {
@@ -89,17 +92,21 @@ func (p *Parser) parseIfExpression() ast.Expression {
 	return expression
 }
 
+// 「(」と「)」に対応する式を解析する
 func (p *Parser) parseGroupedExpression() ast.Expression {
 	defer untrace(trace("parseGroupedExpression"))
 	p.nextToken()
 
+	// LOWESTの優先度を付けることで「)」トークンまでのASTを構築する
 	exp := p.parseExpression(LOWEST)
+	// グループの終わり「)」トークンであることを期待
 	if !p.expectPeek(token.RPAREN) {
 		return nil
 	}
 	return exp
 }
 
+// 整数リテラルを返す
 func (p *Parser) parseIntegerLiteral() ast.Expression {
 	defer untrace(trace("parseIntegerLiteral"))
 	literal := &ast.IntegerLiteral{Token: p.curToken}
@@ -115,11 +122,13 @@ func (p *Parser) parseIntegerLiteral() ast.Expression {
 	return literal
 }
 
+// 真偽値リテラルを返す
 func (p *Parser) parseBoolean() ast.Expression {
 	defer untrace(trace("parseBoolean"))
 	return &ast.Boolean{Token: p.curToken, Value: p.curTokenIs(token.TRUE)}
 }
 
+// 前置演算子式を返す
 func (p *Parser) parsePrefixExpression() ast.Expression {
 	defer untrace(trace("parsePrefixExpression"))
 	expression := &ast.PrefixExpression{
@@ -134,6 +143,7 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return expression
 }
 
+// 中値演算子式を返す
 func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	defer untrace(trace("parseInfixExpression"))
 	expression := &ast.InfixExpression{
@@ -149,6 +159,7 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	return expression
 }
 
+// 識別子リテラルを返す
 func (p *Parser) parseIdentifier() ast.Expression {
 	defer untrace(trace("parseIdentifier"))
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
@@ -168,6 +179,7 @@ func (p *Parser) nextToken() {
 	p.peekToken = p.l.NextToken()
 }
 
+// 入力値の終端まで構文解析して結果を返す
 func (p *Parser) ParseProgram() *ast.Program {
 	program := &ast.Program{}
 	program.Statements = []ast.Statement{}
@@ -182,26 +194,31 @@ func (p *Parser) ParseProgram() *ast.Program {
 	return program
 }
 
+// 式の種類に応じてASTを構築する
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
-	case token.LET:
+	case token.LET: // let文
 		return p.parseLetStatement()
-	case token.RETURN:
+	case token.RETURN: // return文
 		return p.parseReturnStatement()
 	default:
 		return p.parseExpressionStatement()
 	}
 }
 
+// let文のASTを構築する
+// letとは変数定義に使用するキーワード
 func (p *Parser) parseLetStatement() *ast.LetStatement {
 	stmt := &ast.LetStatement{Token: p.curToken}
 
+	// letの次のtokenは識別子になることを期待
 	if !p.expectPeek(token.IDENT) {
 		return nil
 	}
 
 	stmt.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
+	// 識別子の次は「=」tokenであることを期待
 	if !p.expectPeek(token.ASSIGN) {
 		return nil
 	}
@@ -214,11 +231,15 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	return stmt
 }
 
+// return文のASTを構築する
+// returnとは式を返すためのキーワード
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	stmt := &ast.ReturnStatement{Token: p.curToken}
 
+	// returnの後のtokenを読み飛ばす
 	p.nextToken()
 
+	// 現在指しているtokenが「;」であることを期待
 	for !p.curTokenIs(token.SEMICOLON) {
 		p.nextToken()
 	}
@@ -226,6 +247,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	return stmt
 }
 
+// 式に対してASTを構築する
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	defer untrace(trace("parseExpressionStatement"))
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
@@ -239,6 +261,7 @@ func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	return stmt
 }
 
+// if文などに対応するブロック文のASTを構築する
 func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	block := &ast.BlockStatement{Token: p.curToken}
 	block.Statements = []ast.Statement{}
@@ -293,6 +316,7 @@ func (p *Parser) peekTokenIs(t token.TokenType) bool {
 	return p.peekToken.Type == t
 }
 
+// p.peekTokenとtを比較する
 func (p *Parser) expectPeek(t token.TokenType) bool {
 	if p.peekTokenIs(t) {
 		p.nextToken()
@@ -316,6 +340,7 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 	p.infixParseFns[tokenType] = fn
 }
 
+// 演算子の優先順位
 const (
 	_           int = iota
 	LOWEST          //
@@ -327,6 +352,7 @@ const (
 	CALL            //myFunction(X)
 )
 
+// 演算子毎の優先度のマップ
 var precedences = map[token.TokenType]int{
 	token.EQ:       EQUALS,
 	token.NOT_EQ:   EQUALS,
@@ -338,6 +364,7 @@ var precedences = map[token.TokenType]int{
 	token.ASTERISK: PRODUCT,
 }
 
+// p.peekTokenの優先度を取得
 func (p *Parser) peekPrecedence() int {
 	if p, ok := precedences[p.peekToken.Type]; ok {
 		return p
@@ -346,6 +373,7 @@ func (p *Parser) peekPrecedence() int {
 	return LOWEST
 }
 
+// p.curTokenの優先度を取得
 func (p *Parser) curPrecedence() int {
 	if p, ok := precedences[p.curToken.Type]; ok {
 		return p
