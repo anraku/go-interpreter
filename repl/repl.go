@@ -7,6 +7,7 @@ import (
 
 	"github.com/anraku/monkey/evaluator"
 	"github.com/anraku/monkey/lexer"
+	"github.com/anraku/monkey/object"
 	"github.com/anraku/monkey/parser"
 )
 
@@ -14,6 +15,7 @@ const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
+	env := object.NewEnvironment()
 
 	for {
 		fmt.Printf(PROMPT)
@@ -32,7 +34,7 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		evaluator := evaluator.Eval(program)
+		evaluator := evaluator.Eval(program, env)
 
 		if evaluator != nil {
 			io.WriteString(out, evaluator.Inspect())
