@@ -10,6 +10,7 @@ import (
 
 type ObjectType string
 
+// オブジェクトタイプの一覧
 const (
 	INTEGER_OBJ      = "INTEGER"
 	BOOLEAN_OBJ      = "BOOLEAN"

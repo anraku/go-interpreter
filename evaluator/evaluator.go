@@ -139,6 +139,8 @@ func nativeBoolToBooleanObject(input bool) *object.Boolean {
 func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 	var result object.Object
 
+	// programが持つ式を全て評価する
+	// 評価中に戻り値、エラーに遭遇したら即時に処理を中断する
 	for _, statement := range program.Statements {
 		result = Eval(statement, env)
 
@@ -156,6 +158,8 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 func evalBlockStatements(block *ast.BlockStatement, env *object.Environment) object.Object {
 	var result object.Object
 
+	// programが持つ式を全て評価する
+	// 評価中に戻り値、エラーに遭遇したら即時に処理を中断する
 	for _, statement := range block.Statements {
 		result = Eval(statement, env)
 
@@ -163,6 +167,7 @@ func evalBlockStatements(block *ast.BlockStatement, env *object.Environment) obj
 		if rt == object.RETURN_VALUE_OBJ || rt == object.ERROR_OBJ {
 			return result
 		}
+
 		//switch result := result.(type) {
 		//case *object.ReturnValue:
 		//	return result
@@ -173,6 +178,7 @@ func evalBlockStatements(block *ast.BlockStatement, env *object.Environment) obj
 	return result
 }
 
+// 善知識を評価する
 func evalPrefixExpression(operator string, right object.Object) object.Object {
 	switch operator {
 	case "!":
@@ -184,6 +190,7 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 	}
 }
 
+// オペランドを評価した時の真偽値を反転した真偽値オブジェクトを返す
 func evalBangOperatorExpression(right object.Object) object.Object {
 	switch right {
 	case TRUE:
@@ -198,14 +205,17 @@ func evalBangOperatorExpression(right object.Object) object.Object {
 }
 
 func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
+	// オペランドがIntegerでなければエラーを返す
 	if right.Type() != object.INTEGER_OBJ {
 		return newError("unknown operator: -%s", right.Type())
 	}
 
+	// 整数値の符号を反転させたIntegerオブジェクトを返す
 	value := right.(*object.Integer).Value
 	return &object.Integer{Value: -value}
 }
 
+// 中値演算子式を評価する
 func evalInfixExpression(operator string, left, right object.Object) object.Object {
 	switch {
 	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
@@ -221,6 +231,7 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 	}
 }
 
+// if文のcondition, consequence, alternativeを評価する
 func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
 	condition := Eval(ie.Condition, env)
 	if isError(condition) {
@@ -229,7 +240,7 @@ func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Obje
 
 	if isTruthy(condition) {
 		return Eval(ie.Consequence, env)
-	} else if ie.Alternative != nil {
+	} else if ie.Alternative != nil { // 条件式がfalseでelse文があれば
 		return Eval(ie.Alternative, env)
 	} else {
 		return NULL
@@ -244,15 +255,17 @@ func isTruthy(obj object.Object) bool {
 		return true
 	case FALSE:
 		return false
-	default:
+	default: // 条件式の評価結果がIntegerでもtrueを返す
 		return true
 	}
 }
 
+// Integerの中値演算式を評価する
 func evalIntegerInfixExpression(operator string, left, right object.Object) object.Object {
 	leftVal := left.(*object.Integer).Value
 	rightVal := right.(*object.Integer).Value
 
+	// 言語がサポートする中値演算子毎に評価方法を分ける
 	switch operator {
 	case "+":
 		return &object.Integer{Value: leftVal + rightVal}
