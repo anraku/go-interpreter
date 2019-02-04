@@ -36,6 +36,32 @@ func TestEvalIntegerExpression(t *testing.T) {
 	}
 }
 
+func TestEvalStringExpression(t *testing.T) {
+	input := `"Hello World!"`
+
+	evaluated := testEval(input)
+	result, ok := evaluated.(*object.String)
+	if !ok {
+		t.Errorf("object is not String. got=%T (%+v)", evaluated, evaluated)
+	}
+	if result.Value != "Hello World!" {
+		t.Errorf("object has wrong Value got=%s, want=%s", result.Value, "Hello World!")
+	}
+}
+
+func TestStringConcatenation(t *testing.T) {
+	input := `"Hello" + " " + "World!"`
+
+	evaluated := testEval(input)
+	result, ok := evaluated.(*object.String)
+	if !ok {
+		t.Errorf("object is not String. got=%T (%+v)", evaluated, evaluated)
+	}
+	if result.Value != "Hello World!" {
+		t.Errorf("object has wrong Value got=%s, want=%s", result.Value, "Hello World!")
+	}
+}
+
 func TestEvalBooleanExpression(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -212,6 +238,10 @@ func TestErrorHandling(t *testing.T) {
 		{
 			"foobar",
 			"identifier not found: foobar",
+		},
+		{
+			`"Hello" - "World"`,
+			"unknown operator: STRING - STRING",
 		},
 		{
 			`
