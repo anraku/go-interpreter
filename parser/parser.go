@@ -52,6 +52,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
+	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 
 	// 2つのトークンを読み込む。curTokenとpeekTokenの両方がセットされる
 	p.nextToken()
@@ -113,6 +114,19 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
 	exp := &ast.CallExpression{Token: p.curToken, Function: function}
 	exp.Arguments = p.parseExpressionList(token.RPAREN)
+	return exp
+}
+
+func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
+	exp := &ast.IndexExpression{Token: p.curToken, Left: left}
+
+	p.nextToken()
+	exp.Index = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.RBRACKET) {
+		return nil
+	}
+
 	return exp
 }
 
@@ -445,7 +459,8 @@ const (
 	SUM             // +
 	PRODUCT         // *
 	PREFIX          // -X または !X
-	CALL            //myFunction(X)
+	CALL            // myFunction(X)
+	INDEX           // array[index]
 )
 
 // 演算子毎の優先度のマップ
@@ -459,6 +474,7 @@ var precedences = map[token.TokenType]int{
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
 	token.LPAREN:   CALL,
+	token.LBRACKET: INDEX,
 }
 
 // p.peekTokenの優先度を取得
